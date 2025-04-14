@@ -294,4 +294,6 @@ def resnet18(dataset: str, nf: int=64) -> ResNet:
         nclasses = 100
     elif dataset == 'seq-tinyimg':
         nclasses = 200
+    elif dataset == 'seq-imagenet-r':
+        nclasses = 200
     return ResNet(BasicBlock, [2, 2, 2, 2], nclasses, nf)

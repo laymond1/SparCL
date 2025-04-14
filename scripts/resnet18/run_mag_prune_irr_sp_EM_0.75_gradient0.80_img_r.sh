@@ -7,11 +7,11 @@ DEPTH="18"
 PRUNE_ARGS="--sp-retrain --sp-prune-before-retrain"
 LOAD_CKPT="XXXXX.pth.tar"     # automatically train from scratch if the given checkpoint model is not found
 INIT_LR="0.03"
-EPOCHS="250"
+EPOCHS="100"
 WARMUP="8"
 
 SPARSITY_TYPE="irregular"
-DATASET="seq-cifar10"
+DATASET="seq-imagenet-r"
 
 GLOBAL_BATCH_SIZE="32"
 MASK_UPDATE_DECAY_EPOCH="5-45"
@@ -22,7 +22,7 @@ RM_EPOCH=20
 
 SAVE_FOLDER="checkpoints/resnet18/paper/gradient_effi/mutate_irr/${DATASET}/buffer_${BUFFER_SIZE}/"
 
-PATH_TO_SPARCL=/home/zhan.zhe/SparCL # change to your own path
+PATH_TO_SPARCL=/workspace/SparCL # change to your own path
 cd $PATH_TO_SPARCL
 
 mkdir -p ${SAVE_FOLDER}
@@ -40,7 +40,7 @@ CONFIG_FILE="./profiles/resnet18_cifar/irr/resnet18_0.75.yaml"
 REMARK="irr_0.75_mut"
 LOG_NAME="75_derpp_${GRADIENT}"
 PKL_NAME="irr_0.75_mut_RM_${REMOVE_N}_${RM_EPOCH}"
-# EVAL_CHECKPOINT="./checkpoints/resnet18/mutate_irr/seed914_irr_0.75_mut_resnet18_seq-cifar10_acc_57.110_fgt_43.500_sgd_lr0.1_cosine_sp0.000_task_4.pt"
+# EVAL_CHECKPOINT="./checkpoints/resnet18/mutate_irr/seed914_irr_0.75_mut_resnet18_seq-imagenet-r_acc_57.110_fgt_43.500_sgd_lr0.1_cosine_sp0.000_task_9.pt"
 
 
 CUDA_VISIBLE_DEVICES=${GPU_ID} python3 -u main_sparse_train_w_data_gradient_efficient.py \

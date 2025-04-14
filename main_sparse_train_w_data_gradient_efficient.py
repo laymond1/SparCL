@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 import pickle
@@ -110,7 +111,7 @@ parser.add_argument('--buffer-size', type=int, default=500, metavar='N',
 parser.add_argument('--buffer_weight', type=float, default=1.0, help="weight of ce loss of buffered samples")
 parser.add_argument('--buffer_weight_beta', type=float, default=1.0, help="weight of ce loss of buffered samples in DERPP")
 parser.add_argument('--dataset', type=str, default="seq-cifar10",
-                    help='[seq-cifar10, seq-cifar100]')
+                    help='[seq-cifar10, seq-cifar100, seq-imagenet-r]')
 parser.add_argument('--validation', action='store_true', default=False,
                     help='CL validation T of F')    
 parser.add_argument('--test_epoch_interval', type=int, default=1, metavar='how often we do test',
@@ -732,25 +733,45 @@ def get_hms(seconds):
 
 
 def main():
-    # if args.cuda:
-    #     if args.arch == "vgg":
-    #         if args.depth == 19:
-    #             model = vgg19(dataset=args.dataset)
-    #         elif args.depth == 16:
-    #             model = vgg16(dataset=args.dataset)
-    #         else:
-    #             sys.exit("vgg doesn't have those depth!")
-    #     elif args.arch == "resnet":
-    #         if args.depth == 18:
-    #             model = resnet18(dataset=args.dataset)
-    #         elif args.depth == 20:
-    #             model = resnet20(dataset=args.dataset)
-    #         elif args.depth == 32:
-    #             model = resnet32(depth=32, dataset=args.dataset)
-    #         else:
-    #             sys.exit("resnet doesn't implement those depth!")
-    #     else:
-    #         sys.exit("wrong arch!")
+    if args.dataset == 'seq-cifar10' or args.dataset == 'rot-mnist':
+        nclasses = 10
+    elif args.dataset == 'seq-cifar100':
+        nclasses = 100
+    elif args.dataset == 'seq-tinyimg':
+        nclasses = 200
+    elif args.dataset == 'seq-imagenet-r':
+        nclasses = 200
+
+    if args.cuda:
+        if args.arch == "vgg":
+            if args.depth == 19:
+                model = vgg19(dataset=args.dataset)
+            elif args.depth == 16:
+                model = vgg16(dataset=args.dataset)
+            else:
+                sys.exit("vgg doesn't have those depth!")
+        elif args.arch == "resnet":
+            if args.depth == 18:
+                # model = resnet18(dataset=args.dataset)
+                # load pretrained model
+                model = torchvision.models.resnet18(pretrained=True)
+                # load_dict = pretrained_model.state_dict()
+                # if 'fc.weight' in load_dict:
+                #     del load_dict['fc.weight']
+                #     del load_dict['fc.bias']
+                # missing, unexpected = model.load_state_dict(load_dict, strict=False)
+                # assert len([m for m in missing if 'head' not in m]) == 0, f"Missing keys: {missing}"
+                # assert len(unexpected) == 0, f"Unexpected keys: {unexpected}"
+                model.fc = nn.Linear(model.fc.in_features, nclasses)
+
+            elif args.depth == 20:
+                model = resnet20(dataset=args.dataset)
+            elif args.depth == 32:
+                model = resnet32(depth=32, dataset=args.dataset)
+            else:
+                sys.exit("resnet doesn't implement those depth!")
+        else:
+            sys.exit("wrong arch!")
 
     #     if args.multi_gpu:
     #         model = torch.nn.DataParallel(model)
@@ -866,7 +887,10 @@ def main():
             print('train_indx', len(train_indx))
 
         # Reassign train data and labels and save the removed data
-        train_dataset.data = full_dataset.data[train_indx, :, :, :]
+        if args.dataset == 'seq-cifar10' or args.dataset == 'seq-cifar100':
+            train_dataset.data = full_dataset.data[train_indx, :, :, :]
+        elif args.dataset == 'seq-imagenet-r':
+            train_dataset.data = full_dataset.data[train_indx]
         print(train_dataset.data.shape)  # (35000, 32, 32, 3)
 
         train_dataset.targets = np.array(full_dataset.targets)[train_indx].tolist()
@@ -936,7 +960,10 @@ def main():
                     print('removed train_indx', len(train_indx))
 
                     # Reassign train data and labels
-                    train_dataset.data = full_dataset.data[train_indx, :, :, :]
+                    if args.dataset == 'seq-cifar10' or args.dataset == 'seq-cifar100':
+                        train_dataset.data = full_dataset.data[train_indx, :, :, :]
+                    elif args.dataset == 'seq-imagenet-r':
+                        train_dataset.data = full_dataset.data[train_indx]
                     train_dataset.targets = np.array(
                         full_dataset.targets)[train_indx].tolist()
 
