@@ -185,7 +185,7 @@ class SparseTraining(object):
                 gradient = W.grad.cpu().detach().numpy()
                 non_zeros = gradient != 0
                 non_zeros = non_zeros.astype(np.float32)
-                zero_mask = torch.from_numpy(non_zeros).cuda()
+                zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                 self.gradient_masks[name] = zero_mask
 
     def test_mask_sparsity(self, column=False, channel=False, filter=False, kernel=False):
@@ -359,8 +359,7 @@ class SparseTraining(object):
                             # pruned_mask_np = pruned_mask.cpu().detach().numpy()
                             pruned_weight_np = pruned_weight.cpu().detach().numpy()
 
-                            W.mul_(pruned_mask.cuda())
-
+                            W.mul_(pruned_mask.to(self.args.device))
 
                             non_zeros_prune = pruned_weight_np != 0
                             num_nonzeros_prune = np.count_nonzero(non_zeros_prune.astype(np.float32))
@@ -369,7 +368,7 @@ class SparseTraining(object):
                                                              str(total_num),
                                                              str(1 - (num_nonzeros_prune * 1.0) / total_num))))
 
-                            self.masks[name] = pruned_mask.cuda()
+                            self.masks[name] = pruned_mask.to(self.args.device)
 
 
                             if self.args.gradient_efficient:
@@ -379,7 +378,7 @@ class SparseTraining(object):
                                                                             name,
                                                                             W,
                                                                             new_lower_bound_value)
-                                self.gradient_masks[name] = pruned_mask.cuda()
+                                self.gradient_masks[name] = pruned_mask.to(self.args.device)
 
 
                     ############## growing #############
@@ -483,8 +482,7 @@ class SparseTraining(object):
                         #self.logger.info("{}: sparsity too low, skip".format(name))
                         print("{}: sparsity too low, skip".format(name))
                         continue
-                    zero_mask = torch.from_numpy(non_zeros).cuda()
-
+                    zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                     self.masks[name] = zero_mask
 
             #for name in masks:
@@ -514,11 +512,11 @@ class SparseTraining(object):
 
                             non_zeros = np.reshape(non_zeros, W.data.shape)
                             non_zeros = non_zeros.astype(np.float32)
-                            zero_mask = torch.from_numpy(non_zeros).cuda()
+                            zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                         else:
                             non_zeros = np.ones(W.data.shape)
                             non_zeros = non_zeros.astype(np.float32)
-                            zero_mask = torch.from_numpy(non_zeros).cuda()
+                            zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                         self.masks[name] = zero_mask
 
                 else: #self.sparsity < 0
@@ -541,11 +539,11 @@ class SparseTraining(object):
 
                             non_zeros = np.reshape(non_zeros, W.data.shape)
                             non_zeros = non_zeros.astype(np.float32)
-                            zero_mask = torch.from_numpy(non_zeros).cuda()
+                            zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                         else:
                             non_zeros = np.ones(W.data.shape)
                             non_zeros = non_zeros.astype(np.float32)
-                            zero_mask = torch.from_numpy(non_zeros).cuda()
+                            zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
 
                         self.masks[name] = zero_mask
 
@@ -577,12 +575,12 @@ class SparseTraining(object):
 
                         non_zeros = np.reshape(non_zeros, W.data.shape)
                         non_zeros = non_zeros.astype(np.float32)
-                        zero_mask = torch.from_numpy(non_zeros).cuda()
+                        zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
 
                     else:
                         non_zeros = 1 - np.zeros(W.data.shape)
                         non_zeros = non_zeros.astype(np.float32)
-                        zero_mask = torch.from_numpy(non_zeros).cuda()
+                        zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
                     self.masks[name] = zero_mask
         elif self.pattern == 'global_weight':
             with torch.no_grad():
@@ -616,7 +614,7 @@ class SparseTraining(object):
                         np_mask = np.abs(W.detach().cpu().numpy())  > thr
                         print(name, np.size(np_mask), np.sum(np_mask), float(np.sum(np_mask))/np.size(np_mask) )
 
-                        self.masks[name] = torch.from_numpy(np_mask).cuda()
+                        self.masks[name] = torch.from_numpy(np_mask).to(self.args.device)
 
                     total_non_zero = 0
                     total_size = 0
@@ -647,7 +645,7 @@ class SparseTraining(object):
                 for name, W in self.model.named_parameters():
                     non_zeros = np.ones(W.data.shape)
                     non_zeros = non_zeros.astype(np.float32)
-                    zero_mask = torch.from_numpy(non_zeros).cuda()
+                    zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
             self.masks[name] = zero_mask
 
         elif self.pattern == "pre_defined":
@@ -669,7 +667,7 @@ class SparseTraining(object):
                         #self.logger.info("{}: sparsity too low, skip".format(name))
                         print("{}: sparsity too low, skip".format(name))
                         continue
-                    zero_mask = torch.from_numpy(non_zeros).cuda()
+                    zero_mask = torch.from_numpy(non_zeros).to(self.args.device)
 
                     self.masks[name] = zero_mask
 

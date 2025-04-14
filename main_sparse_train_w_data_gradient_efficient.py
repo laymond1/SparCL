@@ -63,7 +63,7 @@ parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
 parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
+parser.add_argument('--no-cuda', action='store_true', default=True,
                     help='disables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
@@ -157,6 +157,7 @@ args = parser.parse_args()
 # torch.backends.cudnn.benchmark = False
 
 args.cuda = not args.no_cuda and torch.cuda.is_available()
+args.device = torch.device("cuda" if args.cuda else "cpu")
 
 if args.rand_seed:
     seed = random.randint(1, 999)
@@ -203,7 +204,7 @@ def mixup_data(x, y, alpha=1.0):
         lam = 1.0
 
     batch_size = x.size()[0]
-    index = torch.randperm(batch_size).cuda()
+    index = torch.randperm(batch_size).to(x.device)
 
     mixed_x = lam * x + (1 - lam) * x[index,:]
     y_a, y_b = y, y[index]
@@ -252,7 +253,7 @@ class GradualWarmupScheduler(_LRScheduler):
             return super(GradualWarmupScheduler, self).step(epoch)
 
 
-def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
+def train(args, model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
     example_stats_train, train_indx, maskretrain, masks, cl_mask=None):
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -292,8 +293,12 @@ def train(model, trainset, criterion, scheduler, optimizer, epoch, t, buffer, da
         targets = torch.LongTensor(np.array(trainset.targets)[batch_inds].tolist())
 
         # Map to available device
-        inputs = inputs.cuda(non_blocking=True)
-        targets = targets.cuda(non_blocking=True)
+        if args.cuda:
+            inputs = inputs.cuda(non_blocking=True)
+            targets = targets.cuda(non_blocking=True)
+        else:
+            inputs = inputs.to(args.device)
+            targets = targets.to(args.device)
         if args.mixup:
             inputs, target_a, target_b, lam = mixup_data(inputs, targets, args.alpha)
 
@@ -557,7 +562,7 @@ def test(model, dataset):
                 img, target = data
                 # print(f"\tTest classes"+str(np.unique(target)))
                 if args.cuda:
-                    img, target = img.cuda(), target.cuda()
+                    img, target = img.to(model.device), target.to(model.device)
                 img, target = Variable(img, volatile=True), Variable(target)
                 output = model(img)
                 criterion = nn.CrossEntropyLoss()
@@ -580,7 +585,7 @@ def test(model, dataset):
     return acc_list, til_acc_list
 
 
-def evaluate(model, dataset, last=False):
+def evaluate(args, model, dataset, last=False):
     """
     Evaluates the accuracy of the model for each past task.
     :param model: the model to be evaluated
@@ -598,7 +603,7 @@ def evaluate(model, dataset, last=False):
         for data in test_loader:
             with torch.no_grad():
                 inputs, labels = data
-                inputs, labels = inputs.cuda(), labels.cuda()
+                inputs, labels = inputs.to(args.device), labels.to(args.device)
                 # if 'class-il' not in model.COMPATIBILITY:
                 #     outputs = model(inputs, k)
                 # else:
@@ -727,31 +732,32 @@ def get_hms(seconds):
 
 
 def main():
-    if args.cuda:
-        if args.arch == "vgg":
-            if args.depth == 19:
-                model = vgg19(dataset=args.dataset)
-            elif args.depth == 16:
-                model = vgg16(dataset=args.dataset)
-            else:
-                sys.exit("vgg doesn't have those depth!")
-        elif args.arch == "resnet":
-            if args.depth == 18:
-                model = resnet18(dataset=args.dataset)
-            elif args.depth == 20:
-                model = resnet20(dataset=args.dataset)
-            elif args.depth == 32:
-                model = resnet32(depth=32, dataset=args.dataset)
-            else:
-                sys.exit("resnet doesn't implement those depth!")
-        else:
-            sys.exit("wrong arch!")
+    # if args.cuda:
+    #     if args.arch == "vgg":
+    #         if args.depth == 19:
+    #             model = vgg19(dataset=args.dataset)
+    #         elif args.depth == 16:
+    #             model = vgg16(dataset=args.dataset)
+    #         else:
+    #             sys.exit("vgg doesn't have those depth!")
+    #     elif args.arch == "resnet":
+    #         if args.depth == 18:
+    #             model = resnet18(dataset=args.dataset)
+    #         elif args.depth == 20:
+    #             model = resnet20(dataset=args.dataset)
+    #         elif args.depth == 32:
+    #             model = resnet32(depth=32, dataset=args.dataset)
+    #         else:
+    #             sys.exit("resnet doesn't implement those depth!")
+    #     else:
+    #         sys.exit("wrong arch!")
 
-        if args.multi_gpu:
-            model = torch.nn.DataParallel(model)
-        model.cuda()
+    #     if args.multi_gpu:
+    #         model = torch.nn.DataParallel(model)
+    #     model# # .cuda()
 
-    criterion = nn.CrossEntropyLoss().cuda()
+    model = resnet18(dataset=args.dataset).to(args.device)
+    criterion = nn.CrossEntropyLoss()
     criterion.__init__(reduce=False)
 
 
@@ -945,7 +951,7 @@ def main():
 
             print('Training on ' + str(len(train_dataset.targets)) + ' examples')
 
-            train(model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
+            train(args, model, train_dataset, criterion, scheduler, optimizer, epoch, t, buffer, dataset,
                 example_stats_train, train_indx, maskretrain=False, masks={}, cl_mask=cl_mask)
 
             prune_print_sparsity(model)
@@ -953,7 +959,7 @@ def main():
                 show_mask_sparsity()
 
             if epoch % args.test_epoch_interval == 0 or epoch == (int(args.epochs/dataset.N_TASKS)-1):
-                acc_list, til_acc_list = evaluate(model, dataset)
+                acc_list, til_acc_list = evaluate(args, model, dataset)
                 prec1 = sum(acc_list) / (t+1)
                 til_prec1 = sum(til_acc_list) / (t+1)
                 acc_matrix[t] = acc_list

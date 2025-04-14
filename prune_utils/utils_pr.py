@@ -157,11 +157,11 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
 
         non_zeros = np.reshape(non_zeros, weight.shape)
         non_zeros = non_zeros.astype(np.float32)
-        # zero_mask = torch.from_numpy(non_zeros).cuda()
+        # zero_mask = torch.from_numpy(non_zeros).to(args.device)
         # weight *= non_zeros
         ww = weight_ori * non_zeros
 
-        return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(ww).to(args.device)
 
     elif (args.sp_admm_sparsity_type == "filter"):
         shape = weight.shape
@@ -179,7 +179,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
         weight = weight2d.reshape(shape)
         expand_above_threshold = expand_above_threshold.reshape(shape)
         ww = weight_ori * expand_above_threshold
-        return torch.from_numpy(expand_above_threshold).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(expand_above_threshold).to(args.device), torch.from_numpy(ww).to(args.device)
 
     elif (args.sp_admm_sparsity_type == "pattern"):
         print("pattern pruning...", weight.shape)
@@ -188,7 +188,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
         if shape[2] != 3:
             non_zeros = weight != 0
             non_zeros = non_zeros.astype(np.float32)
-            return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(weight).cuda()
+            return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(weight).to(args.device)
 
         pattern1 = [[0, 0], [0, 1], [0, 2], [1, 0], [2, 0]]  # 3
         pattern2 = [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]]  # 12
@@ -234,7 +234,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
         # zeros = weight == 0
         # zeros = zeros.astype(np.float32)
         ww = weight_ori * non_zeros
-        return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(ww).to(args.device)
     elif (args.sp_admm_sparsity_type == "random_pattern"):
         print("pattern pruning...", weight.shape)
         shape = weight.shape
@@ -242,7 +242,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
         if shape[2] != 3:
             non_zeros = weight != 0
             non_zeros = non_zeros.astype(np.float32)
-            return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(weight).cuda()
+            return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(weight).to(args.device)
 
         pattern1 = [[0, 0], [0, 1], [0, 2], [1, 0], [2, 0]]  # 3
         pattern2 = [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]]  # 12
@@ -279,7 +279,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
         # zeros = weight == 0
         # zeros = zeros.astype(np.float32)
         ww = weight_ori * non_zeros
-        return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(ww).to(args.device)
 
     elif (args.sp_admm_sparsity_type == "filter_balance"):
 
@@ -306,7 +306,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
 
         ww = weight_ori * non_zeros
 
-        return torch.from_numpy(non_zeros).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(non_zeros).to(args.device), torch.from_numpy(ww).to(args.device)
 
 
 
@@ -361,7 +361,7 @@ def weight_pruning(args, configs, name, w, prune_ratio, mask_fixed_params=None):
 
         ww = weight_ori * expand_above_threshold
 
-        return torch.from_numpy(expand_above_threshold).cuda(), torch.from_numpy(ww).cuda()
+        return torch.from_numpy(expand_above_threshold).to(args.device), torch.from_numpy(ww).to(args.device)
 
 
     raise SyntaxError("Unknown sparsity type: {}".format(args.sp_admm_sparsity_type))
@@ -377,7 +377,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
     if upper_bound_value == 0:
         print("==> GROW: {}: to DENSE despite the sparsity type is \n".format(name))
         np_updated_mask = np.ones_like(pruned_weight_np, dtype=np.float32)
-        updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        updated_mask = torch.from_numpy(np_updated_mask).to(args.device)
         return updated_mask
 
     if upper_bound_value == lower_bound_value:
@@ -385,7 +385,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
         non_zeros_updated = pruned_weight_np != 0
         non_zeros_updated = non_zeros_updated.astype(np.float32)
         np_updated_mask = non_zeros_updated
-        updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        updated_mask = torch.from_numpy(np_updated_mask).to(args.device)
         return updated_mask
 
     if (args.sp_admm_sparsity_type == "irregular"):
@@ -427,7 +427,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             # print(("{}: {}, {}, {}\n".format(name, str(num_nonzeros_updated), str(total_num), str(sparsity_updated))))
             #
             # # update mask
-            # # zero_mask = torch.from_numpy(non_zeros_updated).cuda()
+            # # zero_mask = torch.from_numpy(non_zeros_updated).to(args.device)
             # np_updated_zero_one_mask = non_zeros_updated
             #
             # # write updated weights back to model
@@ -441,7 +441,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             print("==> GROW: {}: revise sparse mask to sparsity {}\n".format(name, target_sparsity))
 
             # update mask
-            # zero_mask = torch.from_numpy(non_zeros_updated).cuda()
+            # zero_mask = torch.from_numpy(non_zeros_updated).to(args.device)
             np_updated_zero_one_mask = non_zeros_updated
 
             # assign 0 to -1 weight
@@ -454,7 +454,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             assert (False)
 
         np_updated_mask = np_updated_zero_one_mask
-        updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        updated_mask = torch.from_numpy(np_updated_mask).to(args.device)
 
         return updated_mask
 
@@ -501,7 +501,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
         if (conv_kernel_sum == (shape[0] * shape[1])): # np empty kernel exist
             non_zeros_updated = pruned_weight_np != 0
             non_zeros_updated = non_zeros_updated.astype(np.float32)
-            updated_mask = torch.from_numpy(non_zeros_updated).cuda()
+            updated_mask = torch.from_numpy(non_zeros_updated).to(args.device)
             return updated_mask
         else:
             for i in range(shape[0]):
@@ -530,7 +530,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
             non_zeros_updated = pruned_weight_np != 0
             non_zeros_updated = non_zeros_updated.astype(np.float32)
             np_updated_mask = non_zeros_updated
-            updated_mask = torch.from_numpy(np_updated_mask).cuda()
+            updated_mask = torch.from_numpy(np_updated_mask).to(args.device)
 
             mask_sparsity = 1 - (np.count_nonzero(np_updated_mask)) * 1.0 / np.size(pruned_weight_np)
 
@@ -576,7 +576,7 @@ def weight_growing(args, name, pruned_weight_np, lower_bound_value, upper_bound_
         non_zeros_updated = pruned_weight_np != 0
         non_zeros_updated = non_zeros_updated.astype(np.float32)
         np_updated_mask = non_zeros_updated
-        updated_mask = torch.from_numpy(np_updated_mask).cuda()
+        updated_mask = torch.from_numpy(np_updated_mask).to(args.device)
 
         mask_sparsity = 1 - (np.count_nonzero(np_updated_mask)) * 1.0 / np.size(pruned_weight_np)
 

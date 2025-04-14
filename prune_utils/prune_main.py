@@ -73,8 +73,8 @@ def prune_harden(args, model, option=None):
             first = False
         else:
             raise Exception("not implmented yet")
-        W.data = cuda_pruned_weights.cuda().type(W.dtype)  # replace the data field in variable
-
+        W.data = cuda_pruned_weights.to(args.device).type(W.dtype)  # replace the data field in variable
+        
         if args.sp_admm_sparsity_type == "block":
             block = eval(args.sp_admm_block)
             if block[1] == -1:  # row pruning, need to delete corresponding bias
